@@ -1,0 +1,19 @@
+# Terraform files to ignore
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
+# Sensitive keys
+*.pem
+*.key
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Executables
+terraform.exe
+
+# Ignore plan files if any
+*.tfplan
