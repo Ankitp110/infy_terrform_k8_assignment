@@ -51,41 +51,45 @@ resource "aws_route" "public_internet" {
 }
 
 resource "aws_route_table_association" "public" {
-  count          = 2
+  count          = length(aws_subnet.public)
   subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
 }
 
 #########################
-# NAT Gateway for Private Subnets
+# NAT Gateways for Private Subnets (HA)
 #########################
 resource "aws_eip" "nat" {
+  count = length(aws_subnet.public)
   depends_on = [aws_internet_gateway.this]
 }
 
 resource "aws_nat_gateway" "this" {
-  allocation_id = aws_eip.nat.id
-  subnet_id     = aws_subnet.public[0].id
-
-  tags = { Name = "${var.name}-nat-gateway" }
+  count         = length(aws_subnet.public)
+  allocation_id = aws_eip.nat[count.index].id
+  subnet_id     = aws_subnet.public[count.index].id
+  tags = { Name = "${var.name}-nat-gateway-${count.index}" }
 }
 
 #########################
-# Private Route Table
+# Private Route Tables (HA)
 #########################
 resource "aws_route_table" "private" {
+  count  = length(aws_subnet.private)
   vpc_id = aws_vpc.this.id
-  tags   = { Name = "${var.name}-private-rt" }
+  tags   = { Name = "${var.name}-private-rt-${count.index}" }
 }
 
 resource "aws_route" "private_nat" {
-  route_table_id         = aws_route_table.private.id
+  count                  = length(aws_subnet.private)
+  route_table_id         = aws_route_table.private[count.index].id
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = aws_nat_gateway.this.id
+  nat_gateway_id         = aws_nat_gateway.this[count.index % length(aws_nat_gateway.this)].id
 }
 
 resource "aws_route_table_association" "private" {
   count          = length(aws_subnet.private)
   subnet_id      = aws_subnet.private[count.index].id
-  route_table_id = aws_route_table.private.id
+  route_table_id = aws_route_table.private[count.index].id
 }
+

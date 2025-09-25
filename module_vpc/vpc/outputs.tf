@@ -14,6 +14,8 @@ output "igw_id" {
   value = aws_internet_gateway.this.id
 }
 
-output "nat_gateway_id" {
-  value = aws_nat_gateway.this.id
+output "nat_gateway_ids" {
+  description = "List of NAT Gateway IDs"
+  value       = aws_nat_gateway.this[*].id
 }
+

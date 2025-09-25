@@ -10,3 +10,7 @@ output "s3_bucket_name" {
 output "dynamodb_table_name" {
   value = aws_dynamodb_table.tf_lock.name
 }
+
+output "ecr_repo_url" {
+  value = aws_ecr_repository.my_web_app.repository_url
+}

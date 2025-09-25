@@ -32,3 +32,39 @@ resource "aws_instance" "private_nodes" {
     Name = each.key   # => "ankit1-private", etc.
   }
 }
+
+# ECR repository for web app
+resource "aws_ecr_repository" "my_web_app" {
+  name                 = "my-web-app"
+  image_tag_mutability = "MUTABLE"
+
+  tags = {
+    Environment = "dev"
+    Project     = "EKS-WebApp"
+  }
+}
+
+# Optional: lifecycle policy to clean old images
+resource "aws_ecr_lifecycle_policy" "my_web_app_policy" {
+  repository = aws_ecr_repository.my_web_app.name
+
+  policy = <<POLICY
+{
+  "rules": [
+    {
+      "rulePriority": 1,
+      "description": "Keep last 10 images",
+      "selection": {
+        "tagStatus": "any",
+        "countType": "imageCountMoreThan",
+        "countNumber": 10
+      },
+      "action": {
+        "type": "expire"
+      }
+    }
+  ]
+}
+POLICY
+}
+

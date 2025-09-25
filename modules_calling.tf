@@ -21,6 +21,32 @@ module "ssh_sg" {
   ]
 }
 
+module "eks_sg" {
+  source      = "./module_sg/security_group"
+  sg_name     = "eks-cluster-sg"
+  description = "EKS cluster control plane SG"
+  vpc_id      = module.network.vpc_id
+
+  ingress_rules = [
+    {
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]   # allow control plane access
+    }
+  ]
+
+  egress_rules = [
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  ]
+}
+
+
 module "network" {
   source   = "./module_vpc/vpc"
   name     = "ankit-demo"
@@ -34,8 +60,8 @@ module "eks" {
 
   cluster_name       = "ankit-eks-cluster"
   cluster_version    = "1.31"
-  subnet_ids         = concat(module.network.private_subnets, module.network.public_subnets)
-  security_group_ids = [module.ssh_sg.sg_id]
+  subnet_ids         = module.network.private_subnets
+  security_group_ids = [module.eks_sg.sg_id]
 
   nodegroups = {
     default = {

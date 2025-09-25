@@ -55,9 +55,12 @@ resource "aws_iam_role_policy_attachment" "ecr_readonly" {
   role       = aws_iam_role.eks_node_role.name
 }
 
-##############################
-# EKS Cluster
-##############################
+resource "aws_iam_role_policy_attachment" "ssm" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  role       = aws_iam_role.eks_node_role.name
+}
+
+
 resource "aws_eks_cluster" "eks_cluster" {
   name     = var.cluster_name
   version  = var.cluster_version
@@ -71,15 +74,12 @@ resource "aws_eks_cluster" "eks_cluster" {
   }
 }
 
-##############################
-# Nodegroups (Multiple)
-##############################
 resource "aws_eks_node_group" "node_groups" {
   for_each        = var.nodegroups
   cluster_name    = aws_eks_cluster.eks_cluster.name
   node_group_name = each.key
   node_role_arn   = aws_iam_role.eks_node_role.arn
-  subnet_ids      = var.subnet_ids
+  subnet_ids      = var.subnet_ids  # corrected reference
 
   scaling_config {
     desired_size = each.value.desired_size
@@ -88,7 +88,14 @@ resource "aws_eks_node_group" "node_groups" {
   }
 
   instance_types = each.value.instance_types
+
+  # optional remote access (SSH)
+  #remote_access {
+  #  ec2_ssh_key             = var.key_name
+  #  source_security_group_ids = [aws_security_group.worker_sg.id]
+  #}
 }
+
 
 ##############################
 # Kubernetes Provider
