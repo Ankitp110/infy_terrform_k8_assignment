@@ -1,1 +1,50 @@
-#will Start writing code here
+name: Deploy to EKS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ap-south-1
+      ECR_REPO: 637423217175.dkr.ecr.ap-south-1.amazonaws.com/my-web-app
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS CLI
+        run: aws sts get-caller-identity
+
+      - name: Terraform Init & Apply
+        run: |
+          cd terraform
+          terraform init
+          terraform apply -auto-approve
+
+      - name: Build Docker Image
+        run: |
+          docker build -t my-web-app ./docker_app
+
+      - name: Tag Docker Image for ECR
+        run: |
+          docker tag my-web-app:latest $ECR_REPO:latest
+
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | \
+          docker login --username AWS --password-stdin $ECR_REPO
+
+      - name: Push Docker Image to ECR
+        run: |
+          docker push $ECR_REPO:latest
+
+      - name: Deploy Helm Chart
+        run: |
+          helm upgrade --install my-web-app ./helm_chart \
+            --set image.repository=$ECR_REPO,image.tag=latest
