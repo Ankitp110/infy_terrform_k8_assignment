@@ -47,7 +47,7 @@ jobs:
     # Terraform apply
     # -----------------------------
     - name: Terraform Init & Apply
-      working-directory: ./terraform   # update path if needed
+      #working-directory: ./terraform   # update path if needed
       run: |
         terraform init
         terraform apply -auto-approve
