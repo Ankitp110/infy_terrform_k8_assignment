@@ -1,49 +1,96 @@
-name: Deploy to EKS
+name: Full CI/CD to EKS
 
 on:
   push:
     branches:
       - main
 
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPO: 637423217175.dkr.ecr.ap-south-1.amazonaws.com/my-web-app
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_REGION: ap-south-1
-      ECR_REPO: 637423217175.dkr.ecr.ap-south-1.amazonaws.com/my-web-app
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Configure AWS CLI
-        run: aws sts get-caller-identity
+    # -----------------------------
+    # Install Terraform
+    # -----------------------------
+    - name: Install Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.6.0
 
-      - name: Terraform Init & Apply
-        run: |
-          terraform init
-          terraform apply -auto-approve
+    # -----------------------------
+    # Install AWS CLI
+    # -----------------------------
+    - name: Install AWS CLI
+      run: |
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+        unzip awscliv2.zip
+        sudo ./aws/install
+        aws --version
 
-      - name: Build Docker Image
-        run: |
-          docker build -t my-web-app ./docker_app
+    # -----------------------------
+    # Install Helm
+    # -----------------------------
+    - name: Install Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: v3.8.0
 
-      - name: Tag Docker Image for ECR
-        run: |
-          docker tag my-web-app:latest $ECR_REPO:latest
+    # -----------------------------
+    # Configure AWS credentials
+    # -----------------------------
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to ECR
-        run: |
-          aws ecr get-login-password --region $AWS_REGION | \
-          docker login --username AWS --password-stdin $ECR_REPO
+    # -----------------------------
+    # Terraform apply
+    # -----------------------------
+    - name: Terraform Init & Apply
+      working-directory: ./terraform   # update path if needed
+      run: |
+        terraform init
+        terraform apply -auto-approve
 
-      - name: Push Docker Image to ECR
-        run: |
-          docker push $ECR_REPO:latest
+    # -----------------------------
+    # Build Docker image
+    # -----------------------------
+    - name: Build Docker image
+      run: |
+        docker build -t my-web-app:latest .
 
-      - name: Deploy Helm Chart
-        run: |
-          helm upgrade --install my-web-app ./helm_chart \
-            --set image.repository=$ECR_REPO,image.tag=latest
+    # -----------------------------
+    # Login to ECR
+    # -----------------------------
+    - name: Login to ECR
+      run: |
+        aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
+        docker login --username AWS --password-stdin ${{ env.ECR_REPO }}
+
+    # -----------------------------
+    # Tag and Push Docker image
+    # -----------------------------
+    - name: Tag and Push Docker image
+      run: |
+        docker tag my-web-app:latest ${{ env.ECR_REPO }}:latest
+        docker push ${{ env.ECR_REPO }}:latest
+
+    # -----------------------------
+    # Helm deploy
+    # -----------------------------
+    - name: Helm Upgrade / Install
+      working-directory: ./helm-chart   # path to your helm chart
+      run: |
+        helm upgrade --install my-web-app . \
+          --set image.repository=${{ env.ECR_REPO }} \
+          --set image.tag=latest
