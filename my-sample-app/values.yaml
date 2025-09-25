@@ -1,0 +1,19 @@
+replicaCount: 2
+
+image:
+  repository: 637423217175.dkr.ecr.ap-south-1.amazonaws.com/my-web-app
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: LoadBalancer
+  port: 80
+
+ingress:
+  enabled: false
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+
