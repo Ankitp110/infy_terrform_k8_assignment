@@ -98,7 +98,8 @@ jobs:
         kubectl create namespace ${{ env.DYNATRACE_NAMESPACE }} || true
 
         # Add Dynatrace Helm repo
-        helm repo add dynatrace https://raw.githubusercontent.com/Dynatrace/helm-charts/master
+        helm repo remove dynatrace || true
+        helm repo add dynatrace https://raw.githubusercontent.com/Dynatrace/dynatrace-operator/main/config/helm/repos/stable
         helm repo update
 
         # Install/Upgrade Operator & OneAgent
