@@ -88,7 +88,7 @@ jobs:
       run: kubectl get nodes
 
     # -----------------------------
-    # Install Dynatrace Operator + OneAgent via Helm
+    # Install Dynatrace Operator & OneAgent via Helm
     # -----------------------------
     - name: Install Dynatrace Operator & OneAgent
       env:
@@ -99,6 +99,9 @@ jobs:
 
         # Download Dynatrace Operator Helm chart
         curl -LO https://github.com/Dynatrace/helm-charts/releases/latest/download/dynatrace-operator-1.7.1.tgz
+
+        # Verify chart exists
+        ls -l
 
         # Install/Upgrade Operator & OneAgent
         helm upgrade --install dynatrace-operator ./dynatrace-operator-1.7.1.tgz \
@@ -113,22 +116,10 @@ jobs:
     # -----------------------------
     - name: Wait for Dynatrace OneAgent pods
       run: |
-        echo "Waiting for OneAgent pods to be Running..."
-        for i in {1..30}; do
-          PODS_READY=$(kubectl get pods -n ${{ env.DYNATRACE_NAMESPACE }} \
-            -l app.kubernetes.io/component=oneagent -o jsonpath='{.items[*].status.phase}' | grep -c Running || true)
-          PODS_TOTAL=$(kubectl get pods -n ${{ env.DYNATRACE_NAMESPACE }} \
-            -l app.kubernetes.io/component=oneagent --no-headers | wc -l)
-          if [ "$PODS_READY" -eq "$PODS_TOTAL" ] && [ "$PODS_TOTAL" -gt 0 ]; then
-            echo "All OneAgent pods are Running!"
-            exit 0
-          fi
-          echo "Waiting... ($i/30)"
-          sleep 20
-        done
-        echo "Timed out waiting for OneAgent pods"
-        kubectl get pods -n ${{ env.DYNATRACE_NAMESPACE }}
-        exit 1
+        kubectl wait --for=condition=Ready pods \
+          -l app.kubernetes.io/component=oneagent \
+          -n ${{ env.DYNATRACE_NAMESPACE }} \
+          --timeout=600s
 
     # -----------------------------
     # Helm deploy your app
