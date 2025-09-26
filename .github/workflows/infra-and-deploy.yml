@@ -88,20 +88,21 @@ jobs:
       run: kubectl get nodes
 
     # -----------------------------
-    # Install Dynatrace Operator & OneAgent via Helm
+    # Install Dynatrace Operator & OneAgent via Helm repo
     # -----------------------------
     - name: Install Dynatrace Operator & OneAgent
       env:
         ONEAGENT_TOKEN: ${{ secrets.ONEAGENT_TOKEN }}
       run: |
-        # Create Dynatrace namespace
+        # Create namespace
         kubectl create namespace ${{ env.DYNATRACE_NAMESPACE }} || true
 
-        # Download Dynatrace Operator Helm chart
-        curl -LO https://github.com/Dynatrace/helm-charts/releases/latest/download/dynatrace-operator-1.7.1.tgz
+        # Add Dynatrace Helm repo
+        helm repo add dynatrace https://raw.githubusercontent.com/Dynatrace/helm-charts/master
+        helm repo update
 
         # Install/Upgrade Operator & OneAgent
-        helm upgrade --install dynatrace-operator ./dynatrace-operator-1.7.1.tgz \
+        helm upgrade --install dynatrace-operator dynatrace/dynatrace-operator \
           --namespace ${{ env.DYNATRACE_NAMESPACE }} --create-namespace \
           --set oneAgent.apiToken=$ONEAGENT_TOKEN \
           --set apiUrl=https://avk11727.live.dynatrace.com/api \
