@@ -88,7 +88,7 @@ jobs:
       run: kubectl get nodes
 
     # -----------------------------
-    # Install Dynatrace Operator & OneAgent via Helm repo
+    # Install Dynatrace Operator & OneAgent via Helm
     # -----------------------------
     - name: Install Dynatrace Operator & OneAgent
       env:
@@ -97,9 +97,9 @@ jobs:
         # Create namespace
         kubectl create namespace ${{ env.DYNATRACE_NAMESPACE }} || true
 
-        # Add Dynatrace Helm repo
+        # Add official Dynatrace Helm repo
         helm repo remove dynatrace || true
-        helm repo add dynatrace https://raw.githubusercontent.com/Dynatrace/dynatrace-operator/main/config/helm/repos/stable
+        helm repo add dynatrace https://charts.dynatrace.com
         helm repo update
 
         # Install/Upgrade Operator & OneAgent
@@ -121,9 +121,9 @@ jobs:
           --timeout=600s
 
     # -----------------------------
-    # Helm deploy your app
+    # Helm deploy your sample app
     # -----------------------------
-    - name: Helm Upgrade / Install
+    - name: Helm Upgrade / Install App
       working-directory: ./my-sample-app
       run: |
         helm upgrade --install my-web-app . \
