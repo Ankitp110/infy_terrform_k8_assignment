@@ -79,7 +79,7 @@ jobs:
     # Helm deploy
     # -----------------------------
     - name: Helm Upgrade / Install
-      working-directory: ./helm-chart   # path to your helm chart
+      working-directory: ./my-sample-app   # path to your helm chart
       run: |
         helm upgrade --install my-web-app . \
           --set image.repository=${{ env.ECR_REPO }} \
