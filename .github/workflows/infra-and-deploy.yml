@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:   # allows manual trigger
+  workflow_dispatch:
 
 env:
   AWS_REGION: ap-south-1
@@ -88,30 +88,23 @@ jobs:
       run: kubectl get nodes
 
     # -----------------------------
-    # Install Dynatrace Operator
+    # Install Dynatrace Operator + OneAgent via Helm
     # -----------------------------
-    - name: Create Dynatrace namespace
-      run: kubectl create namespace ${{ env.DYNATRACE_NAMESPACE }} || true
-
-    - name: Deploy Dynatrace Operator
-      run: |
-        kubectl apply -f https://github.com/Dynatrace/dynatrace-operator/releases/latest/download/kubernetes.yaml
-        echo "Waiting for Dynakube CRD to be registered..."
-        until kubectl get crd dynakubes.dynatrace.com >/dev/null 2>&1; do
-          echo "Waiting for Dynakube CRD..."
-          sleep 60
-        done
-        echo "Dynakube CRD is installed!"
-
-    # -----------------------------
-    # Deploy Dynakube with OneAgent token
-    # -----------------------------
-    - name: Deploy Dynakube
+    - name: Install Dynatrace Operator & OneAgent
       env:
         ONEAGENT_TOKEN: ${{ secrets.ONEAGENT_TOKEN }}
       run: |
-        sed -i "s|<ONEAGENT_PASS_TOKEN>|$ONEAGENT_TOKEN|g" k8s/dynatrace/dynakube.yaml
-        kubectl apply -f k8s/dynatrace/dynakube.yaml -n ${{ env.DYNATRACE_NAMESPACE }}
+        # Add Dynatrace Helm repo
+        helm repo add dynatrace https://dt-url/helm-charts
+        helm repo update
+
+        # Install/Upgrade Dynatrace Operator with OneAgent
+        helm upgrade --install dynatrace-operator dynatrace/dynatrace-operator \
+          --namespace ${{ env.DYNATRACE_NAMESPACE }} --create-namespace \
+          --set oneAgent.apiToken=$ONEAGENT_TOKEN \
+          --set apiUrl=https://avk11727.live.dynatrace.com/api \
+          --set oneAgent.cloudNativeFullStack=true \
+          --set activeGate.capabilities={routing,kubernetes-monitoring,metrics-ingest}
 
     # -----------------------------
     # Wait for OneAgent pods to be Running
