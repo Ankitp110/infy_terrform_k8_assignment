@@ -88,21 +88,33 @@ jobs:
       run: kubectl get nodes
 
     # -----------------------------
-    # Install Dynatrace Operator & OneAgent via Helm
+    # Dynatrace: Connectivity & Installation Steps
     # -----------------------------
+    - name: Test Dynatrace Helm Repo Connectivity
+      run: curl -I https://charts.dynatrace.com
+
+    - name: Add Dynatrace Helm repo
+      run: |
+        helm repo remove dynatrace || true
+        helm repo add dynatrace https://charts.dynatrace.com
+        n=0
+        until [ "$n" -ge 5 ]
+        do
+          helm repo update && break
+          n=$((n+1))
+          sleep 5
+        done
+
+    - name: List Helm Repos
+      run: helm repo list
+
+    - name: Search for Dynatrace Chart
+      run: helm search repo dynatrace
+
     - name: Install Dynatrace Operator & OneAgent
       env:
         ONEAGENT_TOKEN: ${{ secrets.ONEAGENT_TOKEN }}
       run: |
-        # Create namespace
-        kubectl create namespace ${{ env.DYNATRACE_NAMESPACE }} || true
-
-        # Add official Dynatrace Helm repo
-        helm repo remove dynatrace || true
-        helm repo add dynatrace https://charts.dynatrace.com
-        helm repo update
-
-        # Install/Upgrade Operator & OneAgent
         helm upgrade --install dynatrace-operator dynatrace/dynatrace-operator \
           --namespace ${{ env.DYNATRACE_NAMESPACE }} --create-namespace \
           --set oneAgent.apiToken=$ONEAGENT_TOKEN \
