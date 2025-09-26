@@ -1,0 +1,19 @@
+apiVersion: dynatrace.com/v1beta1
+kind: DynaKube
+metadata:
+  name: dynakube
+  namespace: dynatrace
+spec:
+  apiUrl: https://avk11727.live.dynatrace.com/api
+
+  # OneAgent installation
+  oneAgent:
+    cloudNativeFullStack: {}
+    apiToken: <ONEAGENT_PASS_TOKEN>
+
+  # ActiveGate configuration
+  activeGate:
+    capabilities:
+      - routing
+      - kubernetes-monitoring
+      - metrics-ingest

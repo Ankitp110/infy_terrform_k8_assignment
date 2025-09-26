@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:   # allows manual trigger
 
 env:
   AWS_REGION: ap-south-1
   ECR_REPO: 637423217175.dkr.ecr.ap-south-1.amazonaws.com/my-web-app
+  DYNATRACE_NAMESPACE: dynatrace
 
 jobs:
   deploy:
@@ -41,7 +43,7 @@ jobs:
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+        aws-region: ${{ env.AWS_REGION}}
 
     # -----------------------------
     # Terraform apply
@@ -75,7 +77,7 @@ jobs:
         docker push ${{ env.ECR_REPO }}:latest
 
     # -----------------------------
-    # Configure kubeconfig for EKS  <--- NEW
+    # Configure kubeconfig for EKS
     # -----------------------------
     - name: Configure kubectl for EKS
       run: |
@@ -87,12 +89,34 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
 
-    # Optional sanity check
     - name: Verify cluster access
       run: kubectl get nodes
 
     # -----------------------------
-    # Helm deploy
+    # Install Dynatrace Operator
+    # -----------------------------
+    - name: Create Dynatrace namespace
+      run: kubectl create namespace ${{ env.DYNATRACE_NAMESPACE }} || true
+
+    - name: Deploy Dynatrace Operator
+      run: |
+        kubectl apply -f https://github.com/Dynatrace/dynatrace-operator/releases/latest/download/kubernetes.yaml
+        # wait until Operator is ready
+        kubectl rollout status deployment/dynatrace-operator -n ${{ env.DYNATRACE_NAMESPACE }} --timeout=120s
+
+    # -----------------------------
+    # Deploy Dynakube with OneAgent token
+    # -----------------------------
+    - name: Deploy Dynakube
+      env:
+        ONEAGENT_TOKEN: ${{ secrets.ONEAGENT_TOKEN }}
+      run: |
+        # replace token dynamically in YAML
+        sed -i "s|<ONEAGENT_PASS_TOKEN>|$ONEAGENT_TOKEN|g" dynakube.yaml
+        kubectl apply -f dynakube.yaml -n ${{ env.DYNATRACE_NAMESPACE }}
+
+    # -----------------------------
+    # Helm deploy your app
     # -----------------------------
     - name: Helm Upgrade / Install
       working-directory: ./my-sample-app   # path to your helm chart
