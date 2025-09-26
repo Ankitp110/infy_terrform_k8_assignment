@@ -96,8 +96,12 @@ jobs:
     - name: Deploy Dynatrace Operator
       run: |
         kubectl apply -f https://github.com/Dynatrace/dynatrace-operator/releases/latest/download/kubernetes.yaml
-        echo "Skipping rollout wait — pods may be Pending due to networking/IP limitations"
-        sleep 60  # optional buffer for pods to start scheduling
+        echo "Waiting for Dynakube CRD to be registered..."
+        until kubectl get crd dynakubes.dynatrace.com >/dev/null 2>&1; do
+          echo "Waiting for Dynakube CRD..."
+          sleep 60
+        done
+        echo "Dynakube CRD is installed!"
 
     # -----------------------------
     # Deploy Dynakube with OneAgent token
@@ -108,6 +112,7 @@ jobs:
       run: |
         sed -i "s|<ONEAGENT_PASS_TOKEN>|$ONEAGENT_TOKEN|g" k8s/dynatrace/dynakube.yaml
         kubectl apply -f k8s/dynatrace/dynakube.yaml -n ${{ env.DYNATRACE_NAMESPACE }}
+
     # -----------------------------
     # Wait for OneAgent pods to be Running
     # -----------------------------
