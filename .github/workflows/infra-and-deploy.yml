@@ -94,12 +94,14 @@ jobs:
       env:
         ONEAGENT_TOKEN: ${{ secrets.ONEAGENT_TOKEN }}
       run: |
-        # Add Dynatrace Helm repo
-        helm repo add dynatrace https://dt-url/helm-charts
-        helm repo update
+        # Create Dynatrace namespace
+        kubectl create namespace ${{ env.DYNATRACE_NAMESPACE }} || true
 
-        # Install/Upgrade Dynatrace Operator with OneAgent
-        helm upgrade --install dynatrace-operator dynatrace/dynatrace-operator \
+        # Download Dynatrace Operator Helm chart
+        curl -LO https://github.com/Dynatrace/helm-charts/releases/latest/download/dynatrace-operator-1.7.1.tgz
+
+        # Install/Upgrade Operator & OneAgent
+        helm upgrade --install dynatrace-operator ./dynatrace-operator-1.7.1.tgz \
           --namespace ${{ env.DYNATRACE_NAMESPACE }} --create-namespace \
           --set oneAgent.apiToken=$ONEAGENT_TOKEN \
           --set apiUrl=https://avk11727.live.dynatrace.com/api \
