@@ -47,7 +47,6 @@ jobs:
     # Terraform apply
     # -----------------------------
     - name: Terraform Init & Apply
-      #working-directory: ./terraform   # update path if needed
       run: |
         terraform init
         terraform apply -auto-approve
@@ -74,6 +73,23 @@ jobs:
       run: |
         docker tag my-web-app:latest ${{ env.ECR_REPO }}:latest
         docker push ${{ env.ECR_REPO }}:latest
+
+    # -----------------------------
+    # Configure kubeconfig for EKS  <--- NEW
+    # -----------------------------
+    - name: Configure kubectl for EKS
+      run: |
+        aws eks update-kubeconfig \
+          --name ankit-eks-cluster \
+          --region ${{ env.AWS_REGION }}
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
+
+    # Optional sanity check
+    - name: Verify cluster access
+      run: kubectl get nodes
 
     # -----------------------------
     # Helm deploy
