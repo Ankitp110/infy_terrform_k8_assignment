@@ -107,7 +107,7 @@ jobs:
         ONEAGENT_TOKEN: ${{ secrets.ONEAGENT_TOKEN }}
       run: |
         sed -i "s|<ONEAGENT_PASS_TOKEN>|$ONEAGENT_TOKEN|g" dynakube.yaml
-        kubectl apply -f dynakube.yaml -n ${{ env.DYNATRACE_NAMESPACE }}
+        kubectl apply -f k8s/dynatrace/dynakube.yaml -n ${{ env.DYNATRACE_NAMESPACE }}
 
     # -----------------------------
     # Wait for OneAgent pods to be Running
